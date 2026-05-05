@@ -1,0 +1,54 @@
+name: Build Mac App
+
+# Triggers: push to any branch, or click "Run workflow" manually in the Actions tab.
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build EdgefallIndex.app
+        run: |
+          python -m PyInstaller \
+            --windowed \
+            --noconfirm \
+            --clean \
+            --name EdgefallIndex \
+            --collect-all customtkinter \
+            --collect-all yfinance \
+            --collect-data matplotlib \
+            --hidden-import requests \
+            --hidden-import pandas \
+            --hidden-import numpy \
+            --hidden-import scipy \
+            app.py
+
+      - name: Zip the .app bundle
+        run: |
+          cd dist
+          # Remove quarantine attrs and zip preserving symlinks
+          ditto -c -k --sequesterRsrc --keepParent EdgefallIndex.app EdgefallIndex-mac.zip
+          ls -la
+
+      - name: Upload .app as build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: EdgefallIndex-mac
+          path: dist/EdgefallIndex-mac.zip
+          retention-days: 30
